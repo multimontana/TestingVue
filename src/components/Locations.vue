@@ -1,7 +1,7 @@
 <template>
     <div class="general_block">
         <h1 class="title">World Time</h1>
-        <div class="error">
+        <div class="error" v-if="error_connection">
             <span>Error message</span>
         </div>
         <div>
@@ -10,6 +10,7 @@
                     <span>Select an area</span>
                     <div class="select_block">
                         <select name="" id="area" @change="selectArea($event)">
+                            <option value="">SELECT AREA</option>
                             <option v-for="(area,index) in getAreas" :value="area" v-bind:key="index">{{area}}</option>
                         </select>
                         <svg xmlns="http://www.w3.org/2000/svg" version="1.1" id="Capa_1" x="0px" y="0px" width="255px"
@@ -52,7 +53,6 @@
 
 <script>
     import {mapActions, mapGetters} from "vuex";
-
     export default {
         name: 'Locations',
         props: {
@@ -62,36 +62,37 @@
             return {
                 selectedArea: '',
                 createdDate: '',
+                error_connection : false,
             }
         },
         methods: {
             ...mapActions(['selectAllLocationsAction', 'getSelectedAreaTimeAction', 'getTimeByLocAndAreaAction']),
             selectArea(e) {
                 this.selectedArea = e.target.value;
-                this.getSelectedAreaTimeAction({url: "http://worldtimeapi.org/api/timezone/" + e.target.value})
+                e.target.value != '' ? this.getSelectedAreaTimeAction({url: "http://worldtimeapi.org/api/timezone/" + e.target.value}) : ''
             },
             getTime(e) {
                 this.getTimeByLocAndAreaAction({url: 'http://worldtimeapi.org/api/timezone/' + this.selectedArea + '/' + e.target.value}).then((res) => {
-                    this.createdDate = this.getDateWithUTCOffset(parseInt(res.data.utc_offset))
-
+                    const moment = require('moment-timezone')
+                    var jun = moment(res.data.datetime)
+                    this.createdDate = jun.tz(res.data.timezone).format('HH:mm')
                 })
             },
-            getDateWithUTCOffset(inputTzOffset) {
-                var now = new Date();
-                var currentTzOffset = -now.getTimezoneOffset() / 60
-                var deltaTzOffset = inputTzOffset - currentTzOffset;
-                var nowTimestamp = now.getTime();
-                var deltaTzOffsetMilli = deltaTzOffset * 1000 * 60 * 60;
-                var outputDate = new Date(nowTimestamp + deltaTzOffsetMilli)
-                var hours = outputDate.getHours();
-                if (hours.toString().length == 1) {
-                    hours = '0' + hours
-                }
-                return hours + ":" + outputDate.getMinutes();
-            }
         },
         computed: {
             ...mapGetters(['getAreas', 'getLocations'])
+        },
+        mounted() {
+            var vm = this;
+            setInterval(function(){
+                window.addEventListener('offline', function(){
+                    vm.error_connection = true;
+                });
+                window.addEventListener('online', function(){
+                    vm.error_connection = false;
+                });
+            }, 1000);
+
         },
         created() {
             this.selectAllLocationsAction({url: 'http://worldtimeapi.org/api/timezone'})

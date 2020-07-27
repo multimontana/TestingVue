@@ -19,10 +19,12 @@ export const locations = {
             state.selectedAreaLocations  = payload.map(function (item) {
                return  item.split('/')[1]
             })
+            state.selectedAreaLocations  = state.selectedAreaLocations.filter(function (value, index, self) {
+                return self.indexOf(value.split('/')[0]) === index;
+            })
         },
         SET_TIME(state,payload) {
            state.current_time = payload;
-           console.log(state.current_time)
         }
     },
     actions: {
